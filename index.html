@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ACB Tahta</title>
+<style>
+  :root { --zemin:#0f1c28; --kart:#182b3b; --cizgi:#2a4660; --yazi:#e8f0f6; --soluk:#8fa6b8;
+          --ana:#2f80c9; --yesil:#2e9e6b; --kirmizi:#d2554d; --sari:#d9a441; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--zemin); color:var(--yazi); }
+  header { padding:14px 16px; border-bottom:1px solid var(--cizgi); display:flex; align-items:center; justify-content:space-between; }
+  header b { font-size:18px; letter-spacing:.3px; }
+  header span { color:var(--soluk); font-size:13px; }
+  main { max-width:980px; margin:0 auto; padding:16px; }
+  h2 { font-size:15px; color:var(--soluk); font-weight:600; margin:26px 0 10px; text-transform:uppercase; letter-spacing:.6px; }
+  .kart { background:var(--kart); border:1px solid var(--cizgi); border-radius:12px; padding:14px; }
+  .izgara { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+  .tahta .ad { font-size:19px; font-weight:700; }
+  .rozet { display:inline-block; font-size:12px; padding:3px 9px; border-radius:20px; margin:8px 0 12px; font-weight:600; }
+  .rozet.kilitli { background:#4a2320; color:#ffb4ad; } .rozet.acik { background:#17412f; color:#9be3c0; }
+  .rozet.yok { background:#33404b; color:#aab8c4; }
+  button { font:inherit; border:0; border-radius:9px; padding:10px 12px; color:#fff; background:var(--ana); cursor:pointer; font-weight:600; }
+  button.ikincil { background:#2a4660; } button.tehlike { background:var(--kirmizi); } button.yesil { background:var(--yesil); }
+  button:disabled { opacity:.45; }
+  .sira { display:flex; gap:8px; flex-wrap:wrap; }
+  .sira button { flex:1; min-width:70px; }
+  input[type=text], input[type=url], input[type=time], textarea { width:100%; font:inherit; padding:10px; border-radius:9px;
+      border:1px solid var(--cizgi); background:#0f1c28; color:var(--yazi); }
+  textarea { min-height:190px; font-family:ui-monospace,Consolas,monospace; }
+  label { display:block; margin:10px 0 4px; color:var(--soluk); font-size:14px; }
+  .gunler label { display:inline-flex; gap:5px; align-items:center; margin-right:12px; color:var(--yazi); }
+  .not { color:var(--soluk); font-size:14px; line-height:1.5; }
+  .bildirim { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#243b50; border:1px solid var(--cizgi);
+      padding:10px 16px; border-radius:10px; max-width:92vw; display:none; z-index:9; }
+  .buyuk { text-align:center; padding:26px 14px; }
+  .buyuk .simge { font-size:64px; } .buyuk .durum { font-size:24px; font-weight:700; margin:8px 0; }
+  .kod { font-size:46px; letter-spacing:8px; font-weight:800; font-family:ui-monospace,Consolas,monospace; margin:10px 0; }
+  .ikili { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:700px){ .ikili{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header><b>ACB Tahta</b><span id="rol"></span></header>
+<main id="icerik"></main>
+<div class="bildirim" id="bildirim"></div>
+<script>
+"use strict";
+//<kripto>
+const enc = s => new TextEncoder().encode(s);
+async function imza(anahtar, mesaj) {
+  const k = await crypto.subtle.importKey("raw", enc(anahtar), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+  const s = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc(mesaj)));
+  return Array.from(s, b => b.toString(16).padStart(2, "0")).join("");
+}
+async function kodUret(anahtar, tid, nonce) {
+  const h = await imza(anahtar, `kod|${tid}|${nonce}`);
+  return String(parseInt(h.slice(0, 8), 16) % 1000000).padStart(6, "0");
+}
+const tahtaAnahtari = (ys, tid) => imza(ys, "tahta|" + tid);
+async function komutYap(anahtar, eylem, tid, n) {
+  return { e: eylem, n: n, i: await imza(anahtar, `${eylem}|${tid}|${n}|`), z: Date.now() };
+}
+//</kripto>
+
+const $ = s => document.querySelector(s);
+const icerik = $("#icerik");
+const rastgele = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b.toString(16).padStart(2, "0")).join("");
+const kacis = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const b64 = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64coz = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/")))));
+const sayfaAdresi = () => location.origin + location.pathname;
+
+let ayar = null;
+function ayarOku() { try { ayar = JSON.parse(localStorage.getItem("acbtahta")); } catch (e) { ayar = null; } }
+function ayarYaz(a) { ayar = a; try { localStorage.setItem("acbtahta", JSON.stringify(a)); } catch (e) {} }
+
+let bildirimZ;
+function bildir(m) { const b = $("#bildirim"); b.textContent = m; b.style.display = "block"; clearTimeout(bildirimZ); bildirimZ = setTimeout(() => b.style.display = "none", 3500); }
+
+async function api(yol, metod, veri, kok) {
+  const a = kok || ayar;
+  const r = await fetch(`${a.u}/okul/${a.d}/${yol}.json`, { method: metod || "GET", body: veri === undefined ? undefined : JSON.stringify(veri) });
+  if (!r.ok) throw new Error("Sunucu hatası " + r.status);
+  return r.json();
+}
+
+/* ---------------- ilk kurulum ---------------- */
+function kurulumGoster() {
+  $("#rol").textContent = "İlk kurulum";
+  icerik.innerHTML = `
+    <div class="kart">
+      <p class="not">Bu sayfa henüz bir okula bağlı değil.<br>
+      <b>Öğretmenseniz:</b> size gönderilen bağlantıyı bu tarayıcıda açın.<br>
+      <b>Yöneticiyseniz:</b> Firebase veritabanı adresinizi yazıp okulu oluşturun (kılavuzda 1. adım).</p>
+      <label>Firebase Realtime Database adresi</label>
+      <input type="url" id="fb" placeholder="https://acb-tahta-xxxx-default-rtdb.europe-west1.firebasedatabase.app">
+      <div style="margin-top:12px"><button id="olustur">Okulu oluştur</button></div>
+    </div>`;
+  $("#olustur").onclick = async () => {
+    const u = $("#fb").value.trim().replace(/\/+$/, "");
+    if (!/^https:\/\/[\w.-]+$/.test(u)) return bildir("Adres https:// ile başlamalı ve sonunda başka bir şey olmamalı");
+    const yeni = { u, d: rastgele(16), r: "y", s: rastgele(16), o: rastgele(16) };
+    try {
+      await api("deneme", "PUT", { z: Date.now() }, yeni);
+      await api("deneme", "DELETE", undefined, yeni);
+    } catch (e) { return bildir("Veritabanına yazılamadı. Adresi ve kuralları (kılavuz 1. adım) kontrol edin."); }
+    ayarYaz(yeni);
+    panelGoster();
+  };
+}
+
+/* ---------------- öğretmen ana ekranı ---------------- */
+function ogretmenGoster() {
+  $("#rol").textContent = "Öğretmen";
+  icerik.innerHTML = `<div class="kart buyuk"><div class="simge">📷</div><div class="durum">Hazır</div>
+    <p class="not">Tahtayı açmak için telefonunuzun kamerasını tahtadaki karekoda tutun ve çıkan bağlantıya dokunun.</p></div>`;
+}
+
+/* ---------------- karekod okutulunca ---------------- */
+async function acGoster(tid, n) {
+  $("#rol").textContent = ayar.r === "y" ? "Yönetici" : "Öğretmen";
+  icerik.innerHTML = `<div class="kart buyuk"><div class="simge" id="simge">⏳</div><div class="durum" id="durum">Tahta açılıyor…</div>
+    <p class="not" id="tahtaAd"></p>
+    <p class="not">Tahta açılmadıysa bu kodu tahtadaki tuşlara girin:</p><div class="kod" id="kod">······</div>
+    <div class="sira" style="margin-top:14px"><button class="tehlike" id="kilitle">Tahtayı kilitle</button><button class="ikincil" id="tekrar">Tekrar dene</button></div></div>`;
+  const anahtar = ayar.r === "y" ? await tahtaAnahtari(ayar.s, tid) : ayar.s;
+  $("#kod").textContent = await kodUret(anahtar, tid, n);
+
+  async function bekle(istenen) {
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 800));
+      try { const d = await api(`tahta/${tid}/durum`); if (d) { $("#tahtaAd").textContent = d.ad || ""; if (d.k === istenen) return true; } } catch (e) {}
+    }
+    return false;
+  }
+  async function ac() {
+    $("#simge").textContent = "⏳"; $("#durum").textContent = "Tahta açılıyor…";
+    try {
+      if (ayar.r === "y") {
+        const yn = await api(`tahta/${tid}/durum/n`);
+        await api(`tahta/${tid}/komut`, "PUT", await komutYap(anahtar, "ac", tid, yn));
+      } else {
+        await api(`tahta/${tid}/komut`, "PUT", await komutYap(anahtar, "ac-o", tid, n));
+      }
+    } catch (e) { $("#simge").textContent = "📵"; $("#durum").textContent = "Bağlantı yok — kodu girin"; return; }
+    if (await bekle(false)) { $("#simge").textContent = "✅"; $("#durum").textContent = "Tahta açıldı"; }
+    else { $("#simge").textContent = "⌨️"; $("#durum").textContent = "Açılmadı — kodu girin"; }
+  }
+  $("#tekrar").onclick = ac;
+  $("#kilitle").onclick = async () => {
+    try {
+      if (ayar.r === "y") {
+        const yn = await api(`tahta/${tid}/durum/n`);
+        await api(`tahta/${tid}/komut`, "PUT", await komutYap(anahtar, "kilitle", tid, yn));
+      } else {
+        await api(`tahta/${tid}/komut`, "PUT", await komutYap(anahtar, "kilitle-o", tid, n));
+      }
+      if (await bekle(true)) { $("#simge").textContent = "🔒"; $("#durum").textContent = "Tahta kilitlendi"; }
+      else bildir("Kilitlenemedi (tahtayı başka biri açmış olabilir)");
+    } catch (e) { bildir("Bağlantı yok"); }
+  };
+  ac();
+}
+
+/* ---------------- yönetici paneli ---------------- */
+const GUNLER = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+let tahtalar = {}, yoklama, onay = {};
+
+function panelGoster() {
+  $("#rol").textContent = "Yönetici";
+  icerik.innerHTML = `
+    <div class="sira"><button class="tehlike" id="hepKilit">Tümünü kilitle</button><button class="yesil" id="hepAc">Tümünü aç</button><button class="ikincil" id="hepKapat">Tümünü kapat</button></div>
+    <h2>Tahtalar</h2><div class="izgara" id="liste"><div class="not">Yükleniyor…</div></div>
+    <div class="ikili">
+      <div><h2>Ders saatleri</h2><div class="kart">
+        <label>Her satıra bir ders: başlangıç-bitiş</label>
+        <textarea id="dersler" placeholder="08:30-09:10&#10;09:20-10:00"></textarea>
+        <label>Günler</label><div class="gunler" id="gunler"></div>
+        <label style="display:flex;gap:8px;align-items:center;color:var(--yazi)"><input type="checkbox" id="tk"> Her ders bitiminde tahtaları kilitle</label>
+        <label>Tahtaları şu saatte kapat (boş bırakılabilir)</label><input type="time" id="kp">
+        <div style="margin-top:12px"><button id="programKaydet">Programı kaydet</button></div>
+        <p class="not">Tahtalar yeni programı en geç 1 dakika içinde alır ve internet kesilse de uygular.</p>
+      </div></div>
+      <div><h2>Kurulum ve bağlantılar</h2><div class="kart">
+        <p class="not"><b>Tahta kurulum dosyası</b> — USB'ye, kur.sh ile aynı klasöre koyun. Kurulumlar bitince USB'den silin.</p>
+        <button class="ikincil" id="dosyaIndir">acb-tahta.json indir</button>
+        <p class="not" style="margin-top:16px"><b>Öğretmen bağlantısı</b> — öğretmenlere gönderin; telefonlarının kendi tarayıcısında (Safari/Chrome) bir kez açmaları yeterli.</p>
+        <button class="ikincil" id="ogrKopya">Öğretmen bağlantısını kopyala</button>
+        <p class="not" style="margin-top:16px"><b>Yönetici bağlantısı</b> — kendi telefonunuzda açın. Kimseyle paylaşmayın.</p>
+        <button class="ikincil" id="yonKopya">Yönetici bağlantısını kopyala</button>
+      </div></div>
+    </div>`;
+  $("#gunler").innerHTML = GUNLER.map((g, i) => `<label><input type="checkbox" value="${i + 1}" ${i < 5 ? "checked" : ""}>${g}</label>`).join("");
+  $("#hepKilit").onclick = () => hepsine("kilitle");
+  $("#hepAc").onclick = () => hepsine("ac");
+  $("#hepKapat").onclick = e => ikiAdim(e.target, "hepKapat", "Emin misiniz? Tekrar dokunun", () => hepsine("kapat"));
+  $("#programKaydet").onclick = programKaydet;
+  $("#dosyaIndir").onclick = () => {
+    const veri = { u: ayar.u, d: ayar.d, p: sayfaAdresi(), ys: ayar.s, os: ayar.o };
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(veri)], { type: "application/json" }));
+    a.download = "acb-tahta.json"; a.click();
+  };
+  $("#ogrKopya").onclick = () => kopyala(sayfaAdresi() + "#k=" + b64({ u: ayar.u, d: ayar.d, r: "o", s: ayar.o }));
+  $("#yonKopya").onclick = () => kopyala(sayfaAdresi() + "#k=" + b64(ayar));
+  programYukle();
+  yenile();
+  clearInterval(yoklama);
+  yoklama = setInterval(() => { if (!document.hidden) yenile(); }, 3000);
+}
+
+async function kopyala(m) {
+  try { await navigator.clipboard.writeText(m); bildir("Bağlantı kopyalandı"); }
+  catch (e) { prompt("Bağlantıyı kopyalayın:", m); }
+}
+
+function ikiAdim(dugme, anahtar, uyari, is) {
+  if (onay[anahtar]) { delete onay[anahtar]; is(); return; }
+  onay[anahtar] = true; const eski = dugme.textContent; dugme.textContent = uyari;
+  setTimeout(() => { delete onay[anahtar]; if (dugme.isConnected) dugme.textContent = eski; }, 4000);
+}
+
+function cevrimici(t) { return t.durum && t.durum.s && Date.now() - t.durum.s < 100000; }
+
+async function yenile() {
+  try { tahtalar = (await api("tahta")) || {}; } catch (e) { return; }
+  const liste = $("#liste"); if (!liste) return;
+  const kimlikler = Object.keys(tahtalar).filter(k => tahtalar[k].durum).sort((a, b) => (tahtalar[a].durum.ad || "").localeCompare(tahtalar[b].durum.ad || "", "tr", { numeric: true }));
+  if (!kimlikler.length) { liste.innerHTML = `<div class="not">Henüz tahta yok. Kurulum dosyasını indirip tahtalara kurun.</div>`; return; }
+  liste.innerHTML = kimlikler.map(k => {
+    const t = tahtalar[k], var_ = cevrimici(t);
+    const rozet = !var_ ? `<span class="rozet yok">Kapalı / çevrimdışı</span>` : t.durum.k ? `<span class="rozet kilitli">Kilitli</span>` : `<span class="rozet acik">Açık</span>`;
+    const dugmeler = var_
+      ? `<button class="tehlike" data-e="kilitle" data-k="${kacis(k)}">Kilitle</button><button class="yesil" data-e="ac" data-k="${kacis(k)}">Aç</button><button class="ikincil" data-e="kapat" data-k="${kacis(k)}">Kapat</button>`
+      : `<button class="ikincil" data-e="sil" data-k="${kacis(k)}">Listeden sil</button>`;
+    return `<div class="kart tahta"><div class="ad">${kacis(t.durum.ad || k)}</div>${rozet}<div class="sira">${dugmeler}</div></div>`;
+  }).join("");
+  liste.querySelectorAll("button").forEach(b => b.onclick = () => {
+    const k = b.dataset.k, e = b.dataset.e;
+    if (e === "kapat" || e === "sil") ikiAdim(b, e + k, "Emin misiniz?", () => e === "sil" ? sil(k) : tekine(k, e));
+    else tekine(k, e);
+  });
+}
+
+async function tekine(k, eylem) {
+  try {
+    const yn = await api(`tahta/${k}/durum/n`);
+    await api(`tahta/${k}/komut`, "PUT", await komutYap(await tahtaAnahtari(ayar.s, k), eylem, k, yn));
+    bildir("Komut gönderildi"); setTimeout(yenile, 900);
+  } catch (e) { bildir("Gönderilemedi: " + e.message); }
+}
+
+async function hepsine(eylem) {
+  try {
+    const hepsi = (await api("tahta")) || {}, yama = {};
+    for (const k of Object.keys(hepsi)) {
+      if (!cevrimici(hepsi[k])) continue;
+      yama[k + "/komut"] = await komutYap(await tahtaAnahtari(ayar.s, k), eylem, k, hepsi[k].durum.n);
+    }
+    if (!Object.keys(yama).length) return bildir("Açık tahta yok");
+    await api("tahta", "PATCH", yama);
+    bildir(Object.keys(yama).length + " tahtaya komut gönderildi"); setTimeout(yenile, 900);
+  } catch (e) { bildir("Gönderilemedi: " + e.message); }
+}
+
+async function sil(k) { try { await api("tahta/" + k, "DELETE"); yenile(); } catch (e) { bildir("Silinemedi"); } }
+
+async function programYukle() {
+  try {
+    const p = await api("program"); if (!p || !p.v) return;
+    const v = JSON.parse(p.v);
+    $("#dersler").value = (v.d || []).map(d => d.join("-")).join("\n");
+    document.querySelectorAll("#gunler input").forEach(c => c.checked = (v.g || []).includes(+c.value));
+    $("#tk").checked = !!v.tk; $("#kp").value = v.kp || "";
+  } catch (e) {}
+}
+
+async function programKaydet() {
+  const d = [];
+  for (const satir of $("#dersler").value.split("\n").map(s => s.trim()).filter(Boolean)) {
+    const m = satir.match(/^(\d{1,2})[:.](\d{2})\s*-\s*(\d{1,2})[:.](\d{2})$/);
+    if (!m || +m[1] > 23 || +m[3] > 23 || +m[2] > 59 || +m[4] > 59) return bildir("Anlaşılmayan satır: " + satir);
+    d.push([m[1].padStart(2, "0") + ":" + m[2], m[3].padStart(2, "0") + ":" + m[4]]);
+  }
+  const g = Array.from(document.querySelectorAll("#gunler input:checked"), c => +c.value);
+  const v = JSON.stringify({ g, d, tk: $("#tk").checked, kp: $("#kp").value || "" });
+  try {
+    await api("program", "PUT", { v, i: await imza(await imza(ayar.s, "program"), v), z: Date.now() });
+    bildir("Program kaydedildi");
+  } catch (e) { bildir("Kaydedilemedi: " + e.message); }
+}
+
+/* ---------------- başlangıç ---------------- */
+function basla() {
+  if (!window.crypto || !crypto.subtle) { icerik.innerHTML = `<div class="kart">Bu sayfa https:// adresinden açılmalıdır.</div>`; return; }
+  ayarOku();
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("k")) {
+    try { ayarYaz(b64coz(h.get("k"))); bildir("Bu telefon tanımlandı"); } catch (e) { bildir("Bağlantı bozuk"); }
+    history.replaceState(null, "", location.pathname);
+  }
+  if (h.get("t") && h.get("n")) {
+    if (!ayar) { icerik.innerHTML = `<div class="kart buyuk"><div class="simge">🔑</div><p class="not">Bu telefon henüz tanımlı değil. Önce okul yönetiminin gönderdiği bağlantıyı bu tarayıcıda açın, sonra karekodu yeniden okutun.</p></div>`; return; }
+    history.replaceState(null, "", location.pathname);
+    return acGoster(h.get("t"), h.get("n"));
+  }
+  if (!ayar) return kurulumGoster();
+  ayar.r === "y" ? panelGoster() : ogretmenGoster();
+}
+window.addEventListener("hashchange", () => location.reload());
+basla();
+</script>
+</body>
+</html>
