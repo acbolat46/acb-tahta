@@ -7,37 +7,43 @@
 <title>ACB Tahta</title>
 <style>
   :root { --zemin:#0f1c28; --kart:#182b3b; --cizgi:#2a4660; --yazi:#e8f0f6; --soluk:#8fa6b8;
-          --ana:#2f80c9; --yesil:#2e9e6b; --kirmizi:#d2554d; --sari:#d9a441; }
+          --ana:#2f80c9; --yesil:#2e9e6b; --kirmizi:#d2554d; --mor:#7a5cc9; }
   * { box-sizing:border-box; }
   body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--zemin); color:var(--yazi); }
   header { padding:14px 16px; border-bottom:1px solid var(--cizgi); display:flex; align-items:center; justify-content:space-between; }
   header b { font-size:18px; letter-spacing:.3px; }
   header span { color:var(--soluk); font-size:13px; }
-  main { max-width:980px; margin:0 auto; padding:16px; }
-  h2 { font-size:15px; color:var(--soluk); font-weight:600; margin:26px 0 10px; text-transform:uppercase; letter-spacing:.6px; }
+  main { max-width:1000px; margin:0 auto; padding:16px 16px 70px; }
+  h2 { font-size:14px; color:var(--soluk); font-weight:600; margin:26px 0 10px; text-transform:uppercase; letter-spacing:.6px; }
   .kart { background:var(--kart); border:1px solid var(--cizgi); border-radius:12px; padding:14px; }
-  .izgara { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
-  .tahta .ad { font-size:19px; font-weight:700; }
-  .rozet { display:inline-block; font-size:12px; padding:3px 9px; border-radius:20px; margin:8px 0 12px; font-weight:600; }
+  .izgara { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+  .tahta { cursor:pointer; user-select:none; position:relative; }
+  .tahta.secili { border-color:var(--ana); box-shadow:0 0 0 2px var(--ana) inset; }
+  .tahta .ad { font-size:18px; font-weight:700; padding-right:26px; }
+  .tahta .isaret { position:absolute; right:12px; top:12px; width:20px; height:20px; border-radius:6px; border:2px solid var(--cizgi); }
+  .tahta.secili .isaret { background:var(--ana); border-color:var(--ana); }
+  .rozet { display:inline-block; font-size:12px; padding:3px 9px; border-radius:20px; margin-top:8px; font-weight:600; }
   .rozet.kilitli { background:#4a2320; color:#ffb4ad; } .rozet.acik { background:#17412f; color:#9be3c0; }
-  .rozet.yok { background:#33404b; color:#aab8c4; }
+  .rozet.yok { background:#33404b; color:#aab8c4; } .rozet.yayin { background:#35285e; color:#cdbcff; }
   button { font:inherit; border:0; border-radius:9px; padding:10px 12px; color:#fff; background:var(--ana); cursor:pointer; font-weight:600; }
-  button.ikincil { background:#2a4660; } button.tehlike { background:var(--kirmizi); } button.yesil { background:var(--yesil); }
+  button.ikincil { background:#2a4660; } button.tehlike { background:var(--kirmizi); } button.yesil { background:var(--yesil); } button.mor { background:var(--mor); }
   button:disabled { opacity:.45; }
-  .sira { display:flex; gap:8px; flex-wrap:wrap; }
-  .sira button { flex:1; min-width:70px; }
+  .sira { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .sira.esit button { flex:1; min-width:90px; }
   input[type=text], input[type=url], input[type=time], textarea { width:100%; font:inherit; padding:10px; border-radius:9px;
       border:1px solid var(--cizgi); background:#0f1c28; color:var(--yazi); }
-  textarea { min-height:190px; font-family:ui-monospace,Consolas,monospace; }
+  input[type=file] { width:100%; color:var(--soluk); font:inherit; margin:6px 0; }
+  textarea { min-height:180px; font-family:ui-monospace,Consolas,monospace; }
   label { display:block; margin:10px 0 4px; color:var(--soluk); font-size:14px; }
-  .gunler label { display:inline-flex; gap:5px; align-items:center; margin-right:12px; color:var(--yazi); }
-  .not { color:var(--soluk); font-size:14px; line-height:1.5; }
+  .secenek label { display:inline-flex; gap:5px; align-items:center; margin:4px 12px 4px 0; color:var(--yazi); }
+  .not { color:var(--soluk); font-size:14px; line-height:1.5; margin:8px 0; }
   .bildirim { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#243b50; border:1px solid var(--cizgi);
       padding:10px 16px; border-radius:10px; max-width:92vw; display:none; z-index:9; }
   .buyuk { text-align:center; padding:26px 14px; }
   .buyuk .simge { font-size:64px; } .buyuk .durum { font-size:24px; font-weight:700; margin:8px 0; }
   .kod { font-size:46px; letter-spacing:8px; font-weight:800; font-family:ui-monospace,Consolas,monospace; margin:10px 0; }
-  .ikili { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:700px){ .ikili{ grid-template-columns:1fr; } }
+  .ikili { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:720px){ .ikili{ grid-template-columns:1fr; } }
+  .hedef { color:var(--yazi); font-weight:600; }
 </style>
 </head>
 <body>
@@ -48,39 +54,51 @@
 "use strict";
 //<kripto>
 const enc = s => new TextEncoder().encode(s);
+const onalti = buf => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
 async function imza(anahtar, mesaj) {
   const k = await crypto.subtle.importKey("raw", enc(anahtar), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
-  const s = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc(mesaj)));
-  return Array.from(s, b => b.toString(16).padStart(2, "0")).join("");
+  return onalti(await crypto.subtle.sign("HMAC", k, enc(mesaj)));
 }
+async function ozet(bayt) { return onalti(await crypto.subtle.digest("SHA-256", bayt)); }
 async function kodUret(anahtar, tid, nonce) {
   const h = await imza(anahtar, `kod|${tid}|${nonce}`);
   return String(parseInt(h.slice(0, 8), 16) % 1000000).padStart(6, "0");
 }
 const tahtaAnahtari = (ys, tid) => imza(ys, "tahta|" + tid);
-async function komutYap(anahtar, eylem, tid, n) {
-  return { e: eylem, n: n, i: await imza(anahtar, `${eylem}|${tid}|${n}|`), z: Date.now() };
+async function komutYap(anahtar, eylem, tid, n, x) {
+  const xs = x ? JSON.stringify(x) : "";
+  const k = { e: eylem, n: n, i: await imza(anahtar, `${eylem}|${tid}|${n}|${xs}`), z: Date.now() };
+  if (xs) k.x = xs;
+  return k;
+}
+function b64Bayt(bayt) {
+  let s = "";
+  for (let i = 0; i < bayt.length; i += 0x8000) s += String.fromCharCode.apply(null, bayt.subarray(i, i + 0x8000));
+  return btoa(s);
 }
 //</kripto>
 
+const DB_SINIR = 10 * 1024 * 1024, PARCA = 600000, KAPI = 47800;
+const YEREL = location.protocol === "file:";
 const $ = s => document.querySelector(s);
 const icerik = $("#icerik");
-const rastgele = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b.toString(16).padStart(2, "0")).join("");
+const rastgele = n => onalti(crypto.getRandomValues(new Uint8Array(n)));
 const kacis = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const b64 = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const b64coz = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/")))));
 const sayfaAdresi = () => location.origin + location.pathname;
+const panelAdresi = () => (ayar && ayar.p) || sayfaAdresi();
 
 let ayar = null;
 function ayarOku() { try { ayar = JSON.parse(localStorage.getItem("acbtahta")); } catch (e) { ayar = null; } }
 function ayarYaz(a) { ayar = a; try { localStorage.setItem("acbtahta", JSON.stringify(a)); } catch (e) {} }
 
 let bildirimZ;
-function bildir(m) { const b = $("#bildirim"); b.textContent = m; b.style.display = "block"; clearTimeout(bildirimZ); bildirimZ = setTimeout(() => b.style.display = "none", 3500); }
+function bildir(m, kalici) { const b = $("#bildirim"); b.textContent = m; b.style.display = "block"; clearTimeout(bildirimZ); if (!kalici) bildirimZ = setTimeout(() => b.style.display = "none", 4000); }
 
-async function api(yol, metod, veri, kok) {
+async function api(yol, metod, veri, kok, sorgu) {
   const a = kok || ayar;
-  const r = await fetch(`${a.u}/okul/${a.d}/${yol}.json`, { method: metod || "GET", body: veri === undefined ? undefined : JSON.stringify(veri) });
+  const r = await fetch(`${a.u}/okul/${a.d}/${yol}.json${sorgu || ""}`, { method: metod || "GET", body: veri === undefined ? undefined : JSON.stringify(veri) });
   if (!r.ok) throw new Error("Sunucu hatası " + r.status);
   return r.json();
 }
@@ -90,17 +108,26 @@ function kurulumGoster() {
   $("#rol").textContent = "İlk kurulum";
   icerik.innerHTML = `
     <div class="kart">
-      <p class="not">Bu sayfa henüz bir okula bağlı değil.<br>
-      <b>Öğretmenseniz:</b> size gönderilen bağlantıyı bu tarayıcıda açın.<br>
-      <b>Yöneticiyseniz:</b> Firebase veritabanı adresinizi yazıp okulu oluşturun (kılavuzda 1. adım).</p>
-      <label>Firebase Realtime Database adresi</label>
-      <input type="url" id="fb" placeholder="https://acb-tahta-xxxx-default-rtdb.europe-west1.firebasedatabase.app">
-      <div style="margin-top:12px"><button id="olustur">Okulu oluştur</button></div>
+      <p class="not"><b>Size bir bağlantı verildiyse</b> (yönetici ya da öğretmen bağlantısı) buraya yapıştırın:</p>
+      <input type="text" id="bag" placeholder="https://...#k=...">
+      <div style="margin-top:10px"><button id="bagKullan">Bağlantıyı kullan</button></div>
+    </div>
+    <h2>Yeni okul</h2>
+    <div class="kart">
+      <p class="not">Okulu ilk kez kuruyorsanız Firebase veritabanı adresinizi yazın (kılavuzda 1. adım).</p>
+      <input type="url" id="fb" placeholder="https://acb-tahta-default-rtdb.europe-west1.firebasedatabase.app">
+      <div style="margin-top:10px"><button class="ikincil" id="olustur">Okulu oluştur</button></div>
     </div>`;
+  $("#bagKullan").onclick = () => {
+    const m = $("#bag").value.trim().match(/[#&]k=([\w\-]+)/);
+    if (!m) return bildir("Bağlantıda tanımlama kodu bulunamadı");
+    try { ayarYaz(b64coz(m[1])); basla(); } catch (e) { bildir("Bağlantı bozuk"); }
+  };
   $("#olustur").onclick = async () => {
+    if (YEREL) return bildir("Yeni okul, panelin internet adresinden oluşturulmalı");
     const u = $("#fb").value.trim().replace(/\/+$/, "");
     if (!/^https:\/\/[\w.-]+$/.test(u)) return bildir("Adres https:// ile başlamalı ve sonunda başka bir şey olmamalı");
-    const yeni = { u, d: rastgele(16), r: "y", s: rastgele(16), o: rastgele(16) };
+    const yeni = { u, d: rastgele(16), r: "y", s: rastgele(16), o: rastgele(16), p: sayfaAdresi() };
     try {
       await api("deneme", "PUT", { z: Date.now() }, yeni);
       await api("deneme", "DELETE", undefined, yeni);
@@ -122,14 +149,14 @@ async function acGoster(tid, n) {
   $("#rol").textContent = ayar.r === "y" ? "Yönetici" : "Öğretmen";
   icerik.innerHTML = `<div class="kart buyuk"><div class="simge" id="simge">⏳</div><div class="durum" id="durum">Tahta açılıyor…</div>
     <p class="not" id="tahtaAd"></p>
-    <p class="not">Tahta açılmadıysa bu kodu tahtadaki tuşlara girin:</p><div class="kod" id="kod">······</div>
-    <div class="sira" style="margin-top:14px"><button class="tehlike" id="kilitle">Tahtayı kilitle</button><button class="ikincil" id="tekrar">Tekrar dene</button></div></div>`;
+    <div id="yedek" style="display:none"><p class="not">Tahtanın interneti yok gibi. Bu kodu tahtadaki <b>Kodla aç</b> tuşlarına girin:</p><div class="kod" id="kod">······</div></div>
+    <div class="sira esit" style="margin-top:14px"><button class="tehlike" id="kilitle">Tahtayı kilitle</button><button class="ikincil" id="tekrar">Tekrar dene</button></div></div>`;
   const anahtar = ayar.r === "y" ? await tahtaAnahtari(ayar.s, tid) : ayar.s;
   $("#kod").textContent = await kodUret(anahtar, tid, n);
 
   async function bekle(istenen) {
     for (let i = 0; i < 8; i++) {
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 700));
       try { const d = await api(`tahta/${tid}/durum`); if (d) { $("#tahtaAd").textContent = d.ad || ""; if (d.k === istenen) return true; } } catch (e) {}
     }
     return false;
@@ -143,9 +170,9 @@ async function acGoster(tid, n) {
       } else {
         await api(`tahta/${tid}/komut`, "PUT", await komutYap(anahtar, "ac-o", tid, n));
       }
-    } catch (e) { $("#simge").textContent = "📵"; $("#durum").textContent = "Bağlantı yok — kodu girin"; return; }
-    if (await bekle(false)) { $("#simge").textContent = "✅"; $("#durum").textContent = "Tahta açıldı"; }
-    else { $("#simge").textContent = "⌨️"; $("#durum").textContent = "Açılmadı — kodu girin"; }
+    } catch (e) { $("#simge").textContent = "📵"; $("#durum").textContent = "Telefonda internet yok"; $("#yedek").style.display = ""; return; }
+    if (await bekle(false)) { $("#simge").textContent = "✅"; $("#durum").textContent = "Tahta açıldı"; $("#yedek").style.display = "none"; }
+    else { $("#simge").textContent = "⌨️"; $("#durum").textContent = "Tahta yanıt vermedi"; $("#yedek").style.display = ""; }
   }
   $("#tekrar").onclick = ac;
   $("#kilitle").onclick = async () => {
@@ -166,44 +193,89 @@ async function acGoster(tid, n) {
 /* ---------------- yönetici paneli ---------------- */
 const GUNLER = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 let tahtalar = {}, yoklama, onay = {};
+const secili = new Set();
 
 function panelGoster() {
-  $("#rol").textContent = "Yönetici";
+  $("#rol").textContent = YEREL ? "Yönetici · okul ağı kipi" : "Yönetici";
   icerik.innerHTML = `
-    <div class="sira"><button class="tehlike" id="hepKilit">Tümünü kilitle</button><button class="yesil" id="hepAc">Tümünü aç</button><button class="ikincil" id="hepKapat">Tümünü kapat</button></div>
-    <h2>Tahtalar</h2><div class="izgara" id="liste"><div class="not">Yükleniyor…</div></div>
+    <h2>Tahtalar</h2>
+    <div class="sira" style="margin-bottom:10px"><button class="ikincil" id="hepSec">Tümünü seç</button><button class="ikincil" id="secimSil">Seçimi kaldır</button>
+      <span class="not" style="margin:0">İşlemler: <span class="hedef" id="hedefYazi">tüm tahtalar</span></span></div>
+    <div class="izgara" id="liste"><div class="not">Yükleniyor…</div></div>
+    <div class="sira esit" style="margin-top:12px"><button class="tehlike" data-toplu="kilitle">Kilitle</button><button class="yesil" data-toplu="ac">Aç</button>
+      <button class="ikincil" data-toplu="kapat" data-onay="1">Kapat</button></div>
+
+    <div class="ikili">
+      <div><h2>Video izlet</h2><div class="kart">
+        <label>YouTube ya da başka bir internet adresi</label>
+        <input type="url" id="videoAdres" placeholder="https://www.youtube.com/watch?v=...">
+        <div class="sira esit" style="margin-top:8px"><button class="mor" id="videoAdresOynat">Oynat</button></div>
+        <label style="margin-top:14px">Ya da kendi video dosyanız</label>
+        <input type="file" id="videoDosya" accept="video/*">
+        <div class="sira esit"><button class="mor" id="videoDosyaOynat">Gönder ve oynat</button><button class="tehlike" id="videoDurdur">Yayını durdur</button></div>
+        <p class="not">Video, tahtada o an ne açık olursa olsun en üstte tam ekran oynar. Kilitli tahtada da oynar; bitince tahta eski durumuna döner.</p>
+      </div></div>
+      <div><h2>Görsel</h2><div class="kart">
+        <input type="file" id="gorselDosya" accept="image/*">
+        <div class="secenek"><label><input type="radio" name="gh" value="kilit" checked>Kilit ekranı</label><label><input type="radio" name="gh" value="duvar">Duvar kâğıdı</label><label><input type="radio" name="gh" value="ikisi">İkisi de</label></div>
+        <div class="sira esit" style="margin-top:8px"><button id="gorselGonder">Görseli gönder</button><button class="ikincil" id="gorselKaldir">Görseli kaldır</button></div>
+        <p class="not">Kilit ekranı ve duvar kâğıdı için ayrı görsel istiyorsanız iki kez gönderin. Kapalı tahtalar görseli açılınca alır.</p>
+        <h2 style="margin-top:18px">Dosya gönder</h2>
+        <input type="file" id="dosya">
+        <div class="sira esit"><button id="dosyaGonder">Dosyayı gönder</button></div>
+        <p class="not">Dosya, tahtanın masaüstündeki <b>ACB Gelenler</b> klasörüne sessizce iner.</p>
+      </div></div>
+    </div>
+    <p class="not" id="boyutNotu"></p>
+
     <div class="ikili">
       <div><h2>Ders saatleri</h2><div class="kart">
         <label>Her satıra bir ders: başlangıç-bitiş</label>
         <textarea id="dersler" placeholder="08:30-09:10&#10;09:20-10:00"></textarea>
-        <label>Günler</label><div class="gunler" id="gunler"></div>
+        <label>Günler</label><div class="secenek" id="gunler"></div>
         <label style="display:flex;gap:8px;align-items:center;color:var(--yazi)"><input type="checkbox" id="tk"> Her ders bitiminde tahtaları kilitle</label>
         <label>Tahtaları şu saatte kapat (boş bırakılabilir)</label><input type="time" id="kp">
         <div style="margin-top:12px"><button id="programKaydet">Programı kaydet</button></div>
-        <p class="not">Tahtalar yeni programı en geç 1 dakika içinde alır ve internet kesilse de uygular.</p>
+        <p class="not">Ders saatleri tüm tahtalara uygulanır; internet kesilse de çalışır.</p>
       </div></div>
       <div><h2>Kurulum ve bağlantılar</h2><div class="kart">
         <p class="not"><b>Tahta kurulum dosyası</b> — USB'ye, kur.sh ile aynı klasöre koyun. Kurulumlar bitince USB'den silin.</p>
         <button class="ikincil" id="dosyaIndir">acb-tahta.json indir</button>
         <p class="not" style="margin-top:16px"><b>Öğretmen bağlantısı</b> — öğretmenlere gönderin; telefonlarının kendi tarayıcısında (Safari/Chrome) bir kez açmaları yeterli.</p>
         <button class="ikincil" id="ogrKopya">Öğretmen bağlantısını kopyala</button>
-        <p class="not" style="margin-top:16px"><b>Yönetici bağlantısı</b> — kendi telefonunuzda açın. Kimseyle paylaşmayın.</p>
+        <p class="not" style="margin-top:16px"><b>Yönetici bağlantısı</b> — kendi telefonunuzda ve okul bilgisayarında açın. Kimseyle paylaşmayın.</p>
         <button class="ikincil" id="yonKopya">Yönetici bağlantısını kopyala</button>
       </div></div>
     </div>`;
+  $("#boyutNotu").innerHTML = YEREL
+    ? "Okul ağı kipindesiniz: büyük dosyalar ve videolar doğrudan okul ağından gönderilir, boyut sınırı yoktur."
+    : "İnternet üzerinden en fazla 10 MB dosya gönderilir. Daha büyük dosya ve videolar için okuldaki bilgisayarda <b>panel/index.html</b> dosyasını çift tıklayarak açın (kılavuzda “Okul ağı kipi”).";
   $("#gunler").innerHTML = GUNLER.map((g, i) => `<label><input type="checkbox" value="${i + 1}" ${i < 5 ? "checked" : ""}>${g}</label>`).join("");
-  $("#hepKilit").onclick = () => hepsine("kilitle");
-  $("#hepAc").onclick = () => hepsine("ac");
-  $("#hepKapat").onclick = e => ikiAdim(e.target, "hepKapat", "Emin misiniz? Tekrar dokunun", () => hepsine("kapat"));
+  document.querySelectorAll("[data-toplu]").forEach(b => b.onclick = () => {
+    const is = () => komutGonder(hedefler(), b.dataset.toplu);
+    b.dataset.onay ? ikiAdim(b, "toplu" + b.dataset.toplu, "Emin misiniz? Tekrar dokunun", is) : is();
+  });
+  $("#hepSec").onclick = () => { Object.keys(tahtalar).forEach(k => tahtalar[k].durum && secili.add(k)); listeCiz(); };
+  $("#secimSil").onclick = () => { secili.clear(); listeCiz(); };
+  $("#videoAdresOynat").onclick = () => {
+    const u = $("#videoAdres").value.trim();
+    if (!/^https?:\/\/\S+$/.test(u)) return bildir("Adres http:// ya da https:// ile başlamalı");
+    komutGonder(hedefler(), "video", { url: u });
+  };
+  $("#videoDosyaOynat").onclick = () => dosyaIslemi($("#videoDosya").files[0], "video");
+  $("#videoDurdur").onclick = () => komutGonder(hedefler(), "durdur");
+  $("#dosyaGonder").onclick = () => dosyaIslemi($("#dosya").files[0], "dosya");
+  $("#gorselGonder").onclick = gorselGonder;
+  $("#gorselKaldir").onclick = () => gorselYaz(null);
   $("#programKaydet").onclick = programKaydet;
   $("#dosyaIndir").onclick = () => {
-    const veri = { u: ayar.u, d: ayar.d, p: sayfaAdresi(), ys: ayar.s, os: ayar.o };
+    const veri = { u: ayar.u, d: ayar.d, p: panelAdresi(), ys: ayar.s, os: ayar.o };
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(veri)], { type: "application/json" }));
     a.download = "acb-tahta.json"; a.click();
   };
-  $("#ogrKopya").onclick = () => kopyala(sayfaAdresi() + "#k=" + b64({ u: ayar.u, d: ayar.d, r: "o", s: ayar.o }));
-  $("#yonKopya").onclick = () => kopyala(sayfaAdresi() + "#k=" + b64(ayar));
+  $("#ogrKopya").onclick = () => kopyala(panelAdresi() + "#k=" + b64({ u: ayar.u, d: ayar.d, r: "o", s: ayar.o }));
+  $("#yonKopya").onclick = () => kopyala(panelAdresi() + "#k=" + b64(ayar));
   programYukle();
   yenile();
   clearInterval(yoklama);
@@ -218,54 +290,178 @@ async function kopyala(m) {
 function ikiAdim(dugme, anahtar, uyari, is) {
   if (onay[anahtar]) { delete onay[anahtar]; is(); return; }
   onay[anahtar] = true; const eski = dugme.textContent; dugme.textContent = uyari;
-  setTimeout(() => { delete onay[anahtar]; if (dugme.isConnected) dugme.textContent = eski; }, 4000);
+  setTimeout(() => { if (onay[anahtar]) { delete onay[anahtar]; if (dugme.isConnected) dugme.textContent = eski; } }, 4000);
 }
 
-function cevrimici(t) { return t.durum && t.durum.s && Date.now() - t.durum.s < 100000; }
+const cevrimici = t => t && t.durum && t.durum.s && Date.now() - t.durum.s < 100000;
+const adi = k => (tahtalar[k] && tahtalar[k].durum && tahtalar[k].durum.ad) || k;
+/** İşlemin uygulanacağı tahtalar: seçim varsa seçililer, yoksa hepsi. */
+function hedefler() {
+  const hepsi = Object.keys(tahtalar).filter(k => tahtalar[k].durum);
+  return secili.size ? hepsi.filter(k => secili.has(k)) : hepsi;
+}
 
 async function yenile() {
   try { tahtalar = (await api("tahta")) || {}; } catch (e) { return; }
+  listeCiz();
+}
+
+function listeCiz() {
   const liste = $("#liste"); if (!liste) return;
-  const kimlikler = Object.keys(tahtalar).filter(k => tahtalar[k].durum).sort((a, b) => (tahtalar[a].durum.ad || "").localeCompare(tahtalar[b].durum.ad || "", "tr", { numeric: true }));
+  for (const k of Array.from(secili)) if (!tahtalar[k] || !tahtalar[k].durum) secili.delete(k);
+  $("#hedefYazi").textContent = secili.size ? Array.from(secili).map(adi).sort().join(", ") : "tüm tahtalar";
+  const kimlikler = Object.keys(tahtalar).filter(k => tahtalar[k].durum).sort((a, b) => adi(a).localeCompare(adi(b), "tr", { numeric: true }));
   if (!kimlikler.length) { liste.innerHTML = `<div class="not">Henüz tahta yok. Kurulum dosyasını indirip tahtalara kurun.</div>`; return; }
   liste.innerHTML = kimlikler.map(k => {
     const t = tahtalar[k], var_ = cevrimici(t);
-    const rozet = !var_ ? `<span class="rozet yok">Kapalı / çevrimdışı</span>` : t.durum.k ? `<span class="rozet kilitli">Kilitli</span>` : `<span class="rozet acik">Açık</span>`;
-    const dugmeler = var_
-      ? `<button class="tehlike" data-e="kilitle" data-k="${kacis(k)}">Kilitle</button><button class="yesil" data-e="ac" data-k="${kacis(k)}">Aç</button><button class="ikincil" data-e="kapat" data-k="${kacis(k)}">Kapat</button>`
-      : `<button class="ikincil" data-e="sil" data-k="${kacis(k)}">Listeden sil</button>`;
-    return `<div class="kart tahta"><div class="ad">${kacis(t.durum.ad || k)}</div>${rozet}<div class="sira">${dugmeler}</div></div>`;
+    const rozet = !var_ ? `<span class="rozet yok">Kapalı</span>` : t.durum.y ? `<span class="rozet yayin">Yayında</span>`
+      : t.durum.k ? `<span class="rozet kilitli">Kilitli</span>` : `<span class="rozet acik">Açık</span>`;
+    const sil = var_ ? "" : `<div style="margin-top:8px"><button class="ikincil" data-sil="${kacis(k)}" style="padding:5px 9px;font-size:13px">Listeden sil</button></div>`;
+    return `<div class="kart tahta ${secili.has(k) ? "secili" : ""}" data-k="${kacis(k)}"><div class="isaret"></div><div class="ad">${kacis(adi(k))}</div>${rozet}${sil}</div>`;
   }).join("");
-  liste.querySelectorAll("button").forEach(b => b.onclick = () => {
-    const k = b.dataset.k, e = b.dataset.e;
-    if (e === "kapat" || e === "sil") ikiAdim(b, e + k, "Emin misiniz?", () => e === "sil" ? sil(k) : tekine(k, e));
-    else tekine(k, e);
+  liste.querySelectorAll(".tahta").forEach(el => el.onclick = ev => {
+    if (ev.target.dataset.sil) return ikiAdim(ev.target, "sil" + ev.target.dataset.sil, "Emin misiniz?", () => sil(ev.target.dataset.sil));
+    const k = el.dataset.k; secili.has(k) ? secili.delete(k) : secili.add(k); listeCiz();
   });
 }
 
-async function tekine(k, eylem) {
-  try {
-    const yn = await api(`tahta/${k}/durum/n`);
-    await api(`tahta/${k}/komut`, "PUT", await komutYap(await tahtaAnahtari(ayar.s, k), eylem, k, yn));
-    bildir("Komut gönderildi"); setTimeout(yenile, 900);
-  } catch (e) { bildir("Gönderilemedi: " + e.message); }
-}
-
-async function hepsine(eylem) {
+/** Açık olan hedef tahtalara imzalı komut gönderir. Gönderilen tahta sayısını döndürür. */
+async function komutGonder(kimlikler, eylem, x, sessiz) {
   try {
     const hepsi = (await api("tahta")) || {}, yama = {};
-    for (const k of Object.keys(hepsi)) {
+    for (const k of kimlikler) {
       if (!cevrimici(hepsi[k])) continue;
-      yama[k + "/komut"] = await komutYap(await tahtaAnahtari(ayar.s, k), eylem, k, hepsi[k].durum.n);
+      yama[k + "/komut"] = await komutYap(await tahtaAnahtari(ayar.s, k), eylem, k, hepsi[k].durum.n, typeof x === "function" ? x(k) : x);
     }
-    if (!Object.keys(yama).length) return bildir("Açık tahta yok");
+    const adet = Object.keys(yama).length;
+    if (!adet) { if (!sessiz) bildir("Açık tahta yok"); return 0; }
     await api("tahta", "PATCH", yama);
-    bildir(Object.keys(yama).length + " tahtaya komut gönderildi"); setTimeout(yenile, 900);
-  } catch (e) { bildir("Gönderilemedi: " + e.message); }
+    if (!sessiz) bildir(adet + " tahtaya gönderildi");
+    setTimeout(yenile, 900);
+    return adet;
+  } catch (e) { bildir("Gönderilemedi: " + e.message); return 0; }
 }
 
-async function sil(k) { try { await api("tahta/" + k, "DELETE"); yenile(); } catch (e) { bildir("Silinemedi"); } }
+async function sil(k) { try { await api("tahta/" + k, "DELETE"); secili.delete(k); yenile(); } catch (e) { bildir("Silinemedi"); } }
 
+/* ---------- dosyalar ---------- */
+/** Küçük dosyayı veritabanına parçalı yükler. */
+async function dbYukle(bayt, ad) {
+  const fid = Date.now().toString(36) + "-" + rastgele(4);
+  const pc = Math.max(1, Math.ceil(bayt.length / PARCA));
+  for (let k = 0; k < pc; k++) {
+    bildir(`Yükleniyor… %${Math.round(100 * k / pc)}`, true);
+    await api(`dosya/${fid}/p/${k}`, "PUT", b64Bayt(bayt.subarray(k * PARCA, (k + 1) * PARCA)));
+  }
+  await api(`dosya/${fid}/m`, "PUT", { ad, b: bayt.length, pc, z: Date.now() });
+  return { fid, sha: await ozet(bayt), ad };
+}
+
+/** 1 günden eski ve görsel olarak kullanılmayan dosyaları veritabanından siler. */
+async function temizlik(korunan) {
+  try {
+    const hepsi = (await api("dosya", "GET", undefined, null, "?shallow=true")) || {};
+    for (const fid of Object.keys(hepsi)) {
+      const z = parseInt(fid.split("-")[0], 36);
+      if (!korunan.has(fid) && Date.now() - z > 86400000) await api("dosya/" + fid, "DELETE");
+    }
+  } catch (e) {}
+}
+
+async function gorselBelgesi() {
+  try { const p = await api("gorsel"); if (p && p.v) return JSON.parse(p.v); } catch (e) {}
+  return { kilit: [], duvar: [] };
+}
+const kullanilanGorseller = v => new Set([].concat(v.kilit || [], v.duvar || []).map(e => e.fid).filter(Boolean));
+
+/** Okul ağı üzerinden (panel yerel dosya olarak açıkken) dosyayı doğrudan tahtaya yollar. */
+function agdanYukle(k, t, dosya, tur, ilerleme) {
+  return new Promise(async (coz, red) => {
+    const n = t.durum.n, ta = await tahtaAnahtari(ayar.s, k);
+    const i = await imza(ta, `yukle|${k}|${n}|${dosya.name}|${dosya.size}`);
+    const x = new XMLHttpRequest();
+    x.open("PUT", `http://${t.durum.ip}:${KAPI}/yukle?ad=${encodeURIComponent(dosya.name)}&tur=${tur}&n=${n}&i=${i}`);
+    x.upload.onprogress = e => ilerleme(e.loaded / e.total);
+    x.onload = () => { try { x.status === 200 ? coz(JSON.parse(x.responseText).ad) : red(new Error("tahta reddetti (" + x.status + ")")); } catch (e) { red(e); } };
+    x.onerror = () => red(new Error("tahtaya ulaşılamadı"));
+    x.send(dosya);
+  });
+}
+
+async function dosyaIslemi(dosya, tur) {
+  if (!dosya) return bildir("Önce dosya seçin");
+  const kimlikler = hedefler();
+  if (dosya.size <= DB_SINIR && !YEREL) {
+    const bayt = new Uint8Array(await dosya.arrayBuffer());
+    let y;
+    try { y = await dbYukle(bayt, dosya.name); } catch (e) { return bildir("Yüklenemedi: " + e.message); }
+    await komutGonder(kimlikler, tur, y);
+    temizlik(kullanilanGorseller(await gorselBelgesi()));
+    return;
+  }
+  if (!YEREL) return bildir("Bu dosya 10 MB'tan büyük. Okuldaki bilgisayarda panel/index.html dosyasını açıp oradan gönderin.", true);
+  // okul ağı: her tahtaya doğrudan gönder
+  const hepsi = (await api("tahta")) || {};
+  const acik = kimlikler.filter(k => cevrimici(hepsi[k]) && hepsi[k].durum.ip);
+  if (!acik.length) return bildir("Açık tahta yok");
+  const oran = {}, adlar = {}, hatalar = [];
+  const goster = () => bildir(`Gönderiliyor… %${Math.round(100 * acik.reduce((s, k) => s + (oran[k] || 0), 0) / acik.length)}  (${acik.length} tahta)`, true);
+  let sira = 0;
+  async function isci() {
+    while (sira < acik.length) {
+      const k = acik[sira++];
+      try { adlar[k] = await agdanYukle(k, hepsi[k], dosya, tur, o => { oran[k] = o; goster(); }); oran[k] = 1; }
+      catch (e) { oran[k] = 1; hatalar.push(adi(k) + ": " + e.message); }
+    }
+  }
+  await Promise.all([isci(), isci(), isci(), isci()]);
+  const giden = Object.keys(adlar);
+  if (tur === "video" && giden.length) {
+    await new Promise(r => setTimeout(r, 1500));   // tahtalar yeni komut sayısını yayınlasın
+    await komutGonder(giden, "video", k => ({ yerel: adlar[k] }), true);
+  }
+  bildir(hatalar.length ? `${giden.length} tahtaya gitti. Gidemeyen: ${hatalar.join("; ")}` : `${giden.length} tahtaya gönderildi`, hatalar.length > 0);
+}
+
+/* ---------- görsel ---------- */
+async function resmiKucult(dosya) {
+  const r = await createImageBitmap(dosya);
+  const oran = Math.min(1, 1920 / Math.max(r.width, r.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(r.width * oran); c.height = Math.round(r.height * oran);
+  const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(r, 0, 0, c.width, c.height);
+  const blob = await new Promise(coz => c.toBlob(coz, "image/jpeg", 0.85));
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+async function gorselGonder() {
+  const dosya = $("#gorselDosya").files[0];
+  if (!dosya) return bildir("Önce görsel seçin");
+  let y;
+  try { y = await dbYukle(await resmiKucult(dosya), "gorsel.jpg"); } catch (e) { return bildir("Görsel yüklenemedi: " + e.message); }
+  gorselYaz(y);
+}
+
+/** y: {fid, sha} ya da kaldırmak için null */
+async function gorselYaz(y) {
+  const hedef = document.querySelector("input[name=gh]:checked").value;
+  const t = secili.size ? Array.from(secili) : "*";
+  const v = await gorselBelgesi();
+  for (const tur of hedef === "ikisi" ? ["kilit", "duvar"] : [hedef]) {
+    const liste = t === "*" ? [] : (v[tur] || []);   // herkese gönderilen yeni kayıt eskileri geçersiz kılar
+    liste.push(y ? { fid: y.fid, sha: y.sha, t } : { fid: "", t });
+    v[tur] = liste.slice(-15);
+  }
+  const vs = JSON.stringify(v);
+  try {
+    await api("gorsel", "PUT", { v: vs, i: await imza(await imza(ayar.s, "program"), vs), z: Date.now() });
+  } catch (e) { return bildir("Kaydedilemedi: " + e.message); }
+  await komutGonder(hedefler(), "yenile", undefined, true);
+  bildir(y ? "Görsel gönderildi" : "Görsel kaldırıldı");
+  temizlik(kullanilanGorseller(v));
+}
+
+/* ---------- ders saatleri ---------- */
 async function programYukle() {
   try {
     const p = await api("program"); if (!p || !p.v) return;
@@ -287,19 +483,21 @@ async function programKaydet() {
   const v = JSON.stringify({ g, d, tk: $("#tk").checked, kp: $("#kp").value || "" });
   try {
     await api("program", "PUT", { v, i: await imza(await imza(ayar.s, "program"), v), z: Date.now() });
+    await komutGonder(Object.keys(tahtalar), "yenile", undefined, true);
     bildir("Program kaydedildi");
   } catch (e) { bildir("Kaydedilemedi: " + e.message); }
 }
 
 /* ---------------- başlangıç ---------------- */
 function basla() {
-  if (!window.crypto || !crypto.subtle) { icerik.innerHTML = `<div class="kart">Bu sayfa https:// adresinden açılmalıdır.</div>`; return; }
+  if (!window.crypto || !crypto.subtle) { icerik.innerHTML = `<div class="kart">Bu sayfa https:// adresinden ya da bilgisayardaki dosyadan açılmalıdır.</div>`; return; }
   ayarOku();
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get("k")) {
-    try { ayarYaz(b64coz(h.get("k"))); bildir("Bu telefon tanımlandı"); } catch (e) { bildir("Bağlantı bozuk"); }
+    try { ayarYaz(b64coz(h.get("k"))); bildir("Bu cihaz tanımlandı"); } catch (e) { bildir("Bağlantı bozuk"); }
     history.replaceState(null, "", location.pathname);
   }
+  if (ayar && ayar.r === "y" && !ayar.p && !YEREL) { ayar.p = sayfaAdresi(); ayarYaz(ayar); }
   if (h.get("t") && h.get("n")) {
     if (!ayar) { icerik.innerHTML = `<div class="kart buyuk"><div class="simge">🔑</div><p class="not">Bu telefon henüz tanımlı değil. Önce okul yönetiminin gönderdiği bağlantıyı bu tarayıcıda açın, sonra karekodu yeniden okutun.</p></div>`; return; }
     history.replaceState(null, "", location.pathname);
